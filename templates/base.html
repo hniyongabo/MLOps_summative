@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bean Leaf Doctor · ML Pipeline</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <div class="brand">🌱 Bean Leaf Doctor <span>disease detection pipeline</span></div>
+  <nav>
+    <a href="/" class="{{ 'active' if page=='dashboard' }}">Dashboard</a>
+    <a href="/predict" class="{{ 'active' if page=='predict' }}">Predict</a>
+    <a href="/retrain" class="{{ 'active' if page=='retrain' }}">Retrain</a>
+  </nav>
+  <div class="pill" id="statusPill">● {{ s.status }} · model {{ s.model.version or 'not loaded' }} · up {{ s.uptime }}</div>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+<footer>MobileNetV2 transfer learning · iBean dataset (Makerere AI Lab &amp; NaCRRI, Uganda) · Flask · SQLite</footer>
+</body>
+</html>
