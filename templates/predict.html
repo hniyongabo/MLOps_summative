@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Diagnose a bean leaf</h1>
+<p class="lead">Upload a photo of a single bean leaf (JPG/PNG). Try the files in <code>demo_samples/</code>;
+  their file names contain the true class so you can check the answer.</p>
+
+<section class="grid2">
+  <div class="card">
+    <form id="form">
+      <label class="drop" id="drop">
+        <input type="file" id="file" name="file" accept="image/*" hidden>
+        <span id="dropText">Click to choose a leaf photo<br><small>or drag &amp; drop it here</small></span>
+        <img id="preview" alt="" hidden>
+      </label>
+      <button type="submit" id="btn" disabled>Predict</button>
+    </form>
+  </div>
+
+  <div class="card" id="resultCard" hidden>
+    <div class="label">Prediction</div>
+    <div class="big" id="cls">–</div>
+    <div class="muted" id="conf"></div>
+    <h3>Probability of each class</h3>
+    <div id="bars"></div>
+    <h3>What this means</h3>
+    <p id="advice"></p>
+    <p class="muted">Decision support only. Confirm with your local agricultural extension officer before treating a crop.</p>
+  </div>
+  <div class="card error" id="err" hidden></div>
+</section>
+
+<script>
+const file = document.getElementById('file'), btn = document.getElementById('btn'), drop = document.getElementById('drop');
+const COLORS = {angular_leaf_spot: '#B7791F', bean_rust: '#C0392B', healthy: '#2F855A'};
+function setFile(f) {
+  if (!f) return;
+  const dt = new DataTransfer(); dt.items.add(f); file.files = dt.files;
+  const img = document.getElementById('preview'); img.src = URL.createObjectURL(f); img.hidden = false;
+  document.getElementById('dropText').textContent = f.name; btn.disabled = false;
+}
+file.onchange = () => setFile(file.files[0]);
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); setFile(e.dataTransfer.files[0]); };
+
+document.getElementById('form').onsubmit = async e => {
+  e.preventDefault(); btn.disabled = true; btn.textContent = 'Analysing…';
+  const fd = new FormData(); fd.append('file', file.files[0]);
+  const res = await fetch('/api/predict', {method: 'POST', body: fd}); const d = await res.json();
+  btn.disabled = false; btn.textContent = 'Predict';
+  const err = document.getElementById('err');
+  if (!res.ok) { err.textContent = d.error; err.hidden = false; return; }
+  err.hidden = true; document.getElementById('resultCard').hidden = false;
+  const cls = document.getElementById('cls');
+  cls.textContent = d.display_name; cls.style.color = COLORS[d.predicted_class];
+  document.getElementById('conf').textContent = `Confidence ${(d.confidence * 100).toFixed(1)}%`;
+  document.getElementById('bars').innerHTML = d.probabilities.map(p =>
+    `<div class="bar"><span>${p.display_name}</span><div style="width:${Math.max(p.probability * 70, 1)}%;background:${COLORS[p.class]}"></div><em>${(p.probability * 100).toFixed(1)}%</em></div>`).join('');
+  document.getElementById('advice').textContent = d.advice;
+};
+</script>
+{% endblock %}
