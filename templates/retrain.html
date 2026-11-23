@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Retrain the model</h1>
+<p class="lead">Add new labelled leaf photos and fine-tune the current model (<b>{{ s.model.version }}</b>) on them.
+  Upload a <code>.zip</code> with one folder per class: <code>angular_leaf_spot/</code>, <code>bean_rust/</code>, <code>healthy/</code>.
+  Example file: <code>demo_samples/new_data_for_retraining.zip</code>.</p>
+
+<section class="steps">
+  <div class="card step">
+    <div class="num">1</div>
+    <h3>Upload data &amp; save to database</h3>
+    <input type="file" id="zip" accept=".zip">
+    <button id="uploadBtn">Upload &amp; save</button>
+    <div class="out" id="out1"></div>
+  </div>
+
+  <div class="card step">
+    <div class="num">2</div>
+    <h3>Preprocess the uploaded data</h3>
+    <p class="muted">EXIF rotation → RGB → resize to 224×224 → array (scaled to −1…1 inside the model). The same function is used for prediction.</p>
+    <button id="prepBtn">Preprocess</button>
+    <div class="out" id="out2"></div>
+  </div>
+
+  <div class="card step">
+    <div class="num">3</div>
+    <h3>Retrain (fine-tune the pre-trained model)</h3>
+    <p class="muted">Loads our saved model <code>models/bean_model.keras</code> as the starting point and continues training it on the
+      new data plus a sample of the original data (Adam, early stopping). The new version is deployed only if it is at least as
+      accurate on the test set.</p>
+    <button id="trainBtn">Start retraining</button>
+    <div class="progress" id="prog" hidden><div id="progBar"></div></div>
+    <pre class="log" id="log" hidden></pre>
+    <div class="out" id="out3"></div>
+  </div>
+</section>
+
+<p class="muted">Database: <b id="dbImages">{{ s.database.images }}</b> images stored ·
+  <b id="dbUnused">{{ s.database.unused }}</b> not yet used for training.</p>
+
+<script>
+const $ = id => document.getElementById(id);
+async function call(btn, url, body, label) {
+  btn.disabled = true; const old = btn.textContent; btn.textContent = label;
+  const res = await fetch(url, {method: 'POST', body}); const d = await res.json();
+  btn.disabled = false; btn.textContent = old; return [res.ok, d];
+}
+const pct = x => (x * 100).toFixed(2) + '%';
+const NAMES = {angular_leaf_spot: 'Angular leaf spot', bean_rust: 'Bean rust', healthy: 'Healthy'};
+
+$('uploadBtn').onclick = async () => {
+  if (!$('zip').files[0]) { $('out1').innerHTML = '<p class="error">Choose a .zip file first.</p>'; return; }
+  const fd = new FormData(); fd.append('file', $('zip').files[0]);
+  const [ok, d] = await call($('uploadBtn'), '/api/upload', fd, 'Uploading…');
+  if (!ok) { $('out1').innerHTML = `<p class="error">${d.error}</p>`; return; }
+  $('out1').innerHTML = `<p class="ok">✔ Saved <b>${d.n_images}</b> images to the database (upload #${d.upload_id}).</p>
+    <p class="muted">${Object.entries(d.per_class).map(([k, v]) => `${NAMES[k]}: ${v}`).join(' · ')}</p>`;
+  $('dbImages').textContent = d.database.images; $('dbUnused').textContent = d.database.unused;
+};
+
+$('prepBtn').onclick = async () => {
+  const [ok, d] = await call($('prepBtn'), '/api/preprocess', null, 'Preprocessing…');
+  if (!ok) { $('out2').innerHTML = `<p class="error">${d.error}</p>`; return; }
+  $('out2').innerHTML = `<p class="ok">✔ Preprocessed <b>${d.n_images}</b> images → array of shape ${d.array_shape.join(' × ')}.</p>
+    <p class="muted">${Object.entries(d.per_class).map(([k, v]) => `${k}: ${v}`).join(' · ')}</p>
+    <div class="thumbs">${d.examples.map(ex => `<figure><img src="${ex.img}"><figcaption>${ex.label}</figcaption></figure>`).join('')}</div>`;
+};
+
+function showResult(d) {
+  const rows = ['accuracy', 'precision', 'recall', 'f1_score', 'loss'].map(k =>
+    `<tr><td>${k}</td><td>${k === 'loss' ? d.before[k].toFixed(4) : pct(d.before[k])}</td>
+     <td><b>${k === 'loss' ? d.after[k].toFixed(4) : pct(d.after[k])}</b></td></tr>`).join('');
+  $('out3').innerHTML = `<p class="ok">✔ Retrained on ${d.n_training_images} images (${d.n_new_images} new) for ${d.epochs_run} epochs (early stopping).</p>
+    <table><tr><th>Test-set metric</th><th>Before</th><th>After</th></tr>${rows}</table>
+    <p class="${d.promoted ? 'ok' : 'error'}">${d.promoted ? `✔ New model <b>${d.version}</b> deployed: predictions now use it.`
+      : 'The new model was not more accurate, so the previous model was kept.'}</p>`;
+}
+
+async function poll() {
+  const j = await (await fetch('/api/retrain/status')).json();
+  $('prog').hidden = false; $('log').hidden = false;
+  $('progBar').style.width = j.progress + '%';
+  $('log').textContent = j.log.join('\n'); $('log').scrollTop = $('log').scrollHeight;
+  if (j.state === 'running') { setTimeout(poll, 1500); return; }
+  $('trainBtn').disabled = false; $('trainBtn').textContent = 'Start retraining';
+  if (j.state === 'error') { $('out3').innerHTML = `<p class="error">${j.error}</p>`; return; }
+  if (j.state === 'done') {
+    showResult(j.result); $('dbUnused').textContent = 0;
+    const st = await (await fetch('/api/status')).json();
+    $('statusPill').textContent = `● ${st.status} · model ${st.model.version} · up ${st.uptime}`;
+  }
+}
+
+$('trainBtn').onclick = async () => {
+  $('out3').innerHTML = '';
+  const [ok, d] = await call($('trainBtn'), '/api/retrain', null, 'Retraining…');
+  if (!ok) { $('out3').innerHTML = `<p class="error">${d.error}</p>`; return; }
+  $('trainBtn').disabled = true; $('trainBtn').textContent = 'Retraining…';
+  poll();
+};
+{% if s.retraining == 'running' %}$('trainBtn').disabled = true; poll();{% endif %}
+</script>
+{% endblock %}
