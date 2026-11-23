@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+.DS_Store
+# created at runtime
+database/
+models/archive/
+# raw downloads from scripts/prepare_data.py
+raw/
+bean_project_outputs.zip
+static/insights/
