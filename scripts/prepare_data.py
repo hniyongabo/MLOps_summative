@@ -52,7 +52,27 @@ def collect(split):
     return items
 
 
-if __name__ == "__main__":
+def export(items, split):
+    for path, label in items:
+        folder = os.path.join(DATA, split, CLASS_NAMES[label])
+        os.makedirs(folder, exist_ok=True)
+        name = os.path.splitext(os.path.basename(path))[0] + ".jpg"
+        Image.fromarray(load_image(path)).save(os.path.join(folder, name), quality=92)
+
+
+def main():
     download()
-    for s in SPLITS:
-        print(s, len(collect(s)), "images")
+    raw = {s: collect(s) for s in SPLITS}
+    shutil.rmtree(DATA, ignore_errors=True)
+    train_items, pool_items = train_test_split(raw["train"], test_size=0.25, random_state=SEED,
+                                               stratify=[label for _, label in raw["train"]])
+    export(train_items, "train")
+    export(pool_items, "retrain_pool")
+    export(raw["validation"], "validation")
+    export(raw["test"], "test")
+    print(f"train={len(train_items)} retrain_pool={len(pool_items)} "
+          f"validation={len(raw['validation'])} test={len(raw['test'])}")
+
+
+if __name__ == "__main__":
+    main()
