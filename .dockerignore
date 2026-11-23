@@ -1,0 +1,10 @@
+.git
+__pycache__/
+*.pyc
+.venv/
+venv/
+raw/
+database/
+models/archive/
+bean_project_outputs.zip
+static/insights/
