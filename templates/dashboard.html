@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Dashboard</h1>
+<p class="lead">Live model status and insights about the bean leaf dataset.</p>
+
+{% set m = s.model.test_metrics or {} %}
+{% if m %}
+<section class="cards">
+  <div class="card stat"><div class="label">Accuracy</div><div class="value">{{ '%.1f' % (m.accuracy*100) }}%</div></div>
+  <div class="card stat"><div class="label">F1 score</div><div class="value">{{ '%.3f' % m.f1_score }}</div></div>
+  <div class="card stat"><div class="label">Precision</div><div class="value">{{ '%.3f' % m.precision }}</div></div>
+  <div class="card stat"><div class="label">Recall</div><div class="value">{{ '%.3f' % m.recall }}</div></div>
+  <div class="card stat"><div class="label">Loss</div><div class="value">{{ '%.3f' % m.loss }}</div></div>
+</section>
+<p class="muted">Test-set metrics of the live model <b>{{ s.model.version }}</b> ({{ s.model.architecture }}) ·
+  saved {{ s.model.saved_at }} · database: {{ s.database.images }} uploaded images in {{ s.database.uploads }} upload(s)
+  {% if s.model.vanilla_test_metrics %}· the vanilla CNN baseline reached {{ '%.1f' % (s.model.vanilla_test_metrics.Accuracy*100) }}% accuracy{% endif %}</p>
+{% else %}
+<div class="card error">No trained model found. Run the notebook and put <code>models/bean_model.keras</code> and <code>models/model_metadata.json</code> in place.</div>
+{% endif %}
+
+<h2>Data insights</h2>
+<section class="grid2">
+  <div class="card">
+    <img src="/static/insights/class_distribution.png?v={{ v }}" alt="class distribution">
+    <p><b>Balanced classes.</b> {{ data.total }} images in total. Each disease class has between {{ data.min_class }} and
+      {{ data.max_class }} training images, so the model is not biased towards one class and accuracy is a fair measure.
+      25% of the original training data is held back as the <i>retrain pool</i>: new data for the retraining demo.</p>
+  </div>
+  <div class="card">
+    <img src="/static/insights/colour_analysis.png?v={{ v }}" alt="colour analysis">
+    <p><b>Colour tells part of the story.</b> <b>{{ data.greenest }}</b> leaves are the greenest on average and
+      <b>{{ data.least_green }}</b> the least green (mean share of green:
+      {% for k, val in data.mean_green.items() %}{{ k }} {{ val }}{{ ', ' if not loop.last }}{% endfor %}).
+      Disease turns leaf tissue brown/yellow, but the boxes overlap, so colour alone is not enough and the network also has to learn spot shapes and texture.</p>
+  </div>
+  <div class="card wide">
+    <img src="/static/insights/examples.png?v={{ v }}" alt="examples">
+    <p><b>What the classes look like.</b> Angular leaf spot gives brown, angular patches bounded by the leaf veins;
+      bean rust gives many small reddish-brown pustules; healthy leaves are uniformly green. Photos were taken in the field with
+      phones, so backgrounds, lighting and angles vary. That is why the model uses data augmentation and a pre-trained network.</p>
+  </div>
+  {% if mi.top_confusion %}
+  <div class="card">
+    <img src="/static/insights/confusion_matrix.png?v={{ v }}" alt="confusion matrix">
+    <p><b>Most common mistake:</b> {{ mi.top_confusion }}. {{ mi.confusion_note }}</p>
+  </div>
+  {% endif %}
+  {% if mi.hardest %}
+  <div class="card">
+    <img src="/static/insights/per_class_f1.png?v={{ v }}" alt="per class f1">
+    <p><b>Hardest class: {{ mi.hardest }}.</b> These two charts are recalculated after every retraining.</p>
+  </div>
+  {% endif %}
+  {% if mi.has_history %}
+  <div class="card wide">
+    <img src="/static/insights/training_curves.png?v={{ v }}" alt="training curves">
+    <p><b>Training process.</b> Phase 1 trains only the classifier on top of the frozen pre-trained MobileNetV2; after the dashed
+      line the top layers are fine-tuned with a tiny learning rate. Early stopping ends each phase when validation loss stops improving.</p>
+  </div>
+  {% endif %}
+</section>
+
+{% if s.database.runs %}
+<h2>Retraining history</h2>
+<table>
+  <tr><th>When</th><th>New images</th><th>Epochs</th><th>Accuracy before</th><th>Accuracy after</th><th>F1 after</th><th>Version</th><th>Deployed?</th></tr>
+  {% for r in s.database.runs %}
+  <tr><td>{{ r.started_at }}</td><td>{{ r.n_new_images }}</td><td>{{ r.epochs }}</td>
+      <td>{{ '%.2f' % (r.old_accuracy*100) }}%</td><td>{{ '%.2f' % (r.new_accuracy*100) }}%</td>
+      <td>{{ '%.3f' % r.new_f1 }}</td><td>{{ r.model_version }}</td><td>{{ 'yes' if r.promoted else 'no (kept old)' }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% endblock %}
