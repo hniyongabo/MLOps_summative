@@ -68,3 +68,27 @@ def mark_used(ids):
     with conn:
         conn.executemany("UPDATE training_images SET used_for_training = 1 WHERE id = ?", [(i,) for i in ids])
     conn.close()
+
+
+def log_run(**kw):
+    conn = connect()
+    with conn:
+        conn.execute(
+            "INSERT INTO retrain_runs (started_at, n_new_images, epochs, old_accuracy, new_accuracy,"
+            " new_f1, model_version, promoted) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (datetime.now().isoformat(timespec="seconds"), kw["n_new_images"], kw["epochs"],
+             kw["old_accuracy"], kw["new_accuracy"], kw["new_f1"], kw["model_version"], int(kw["promoted"])),
+        )
+    conn.close()
+
+
+def stats():
+    conn = connect()
+    out = {
+        "uploads": conn.execute("SELECT COUNT(*) FROM uploads").fetchone()[0],
+        "images": conn.execute("SELECT COUNT(*) FROM training_images").fetchone()[0],
+        "unused": conn.execute("SELECT COUNT(*) FROM training_images WHERE used_for_training=0").fetchone()[0],
+        "runs": [dict(r) for r in conn.execute("SELECT * FROM retrain_runs ORDER BY id DESC LIMIT 10")],
+    }
+    conn.close()
+    return out
