@@ -1,5 +1,5 @@
 {
-  "version": "v1",
+  "version": "v2",
   "architecture": "MobileNetV2 (ImageNet pre-trained) + augmentation + dropout + L2 dense classifier",
   "class_names": [
     "angular_leaf_spot",
@@ -15,11 +15,10 @@
   "n_training_images": 775,
   "test_metrics": {
     "accuracy": 0.9062,
-    "loss": 0.3086,
+    "loss": 0.2991,
     "precision": 0.9077,
     "recall": 0.9068,
     "f1_score": 0.9049,
-    "roc_auc": 0.9696,
     "per_class_f1": [
       0.9111,
       0.85,
@@ -50,5 +49,11 @@
     "Recall": 0.6971,
     "F1 score": 0.6709,
     "ROC AUC": 0.9018
-  }
+  },
+  "last_retrain": {
+    "new_images": 259,
+    "training_images": 559,
+    "epochs": 8
+  },
+  "saved_at": "2026-11-25T14:29:59"
 }

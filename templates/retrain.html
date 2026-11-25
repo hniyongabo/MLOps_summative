@@ -28,7 +28,7 @@
     <p class="muted">Loads our saved model <code>models/bean_model.keras</code> as the starting point and continues training it on the
       new data plus a sample of the original data (Adam, early stopping). The new version is deployed only if it is at least as
       accurate on the test set.</p>
-    <button id="trainBtn">Start retraining</button>
+    <button id="trainBtn" data-running="{{ 'true' if s.retraining == 'running' else 'false' }}">Start retraining</button>
     <div class="progress" id="prog" hidden><div id="progBar"></div></div>
     <pre class="log" id="log" hidden></pre>
     <div class="out" id="out3"></div>
@@ -53,7 +53,7 @@ $('uploadBtn').onclick = async () => {
   const fd = new FormData(); fd.append('file', $('zip').files[0]);
   const [ok, d] = await call($('uploadBtn'), '/api/upload', fd, 'Uploading…');
   if (!ok) { $('out1').innerHTML = `<p class="error">${d.error}</p>`; return; }
-  $('out1').innerHTML = `<p class="ok">✔ Saved <b>${d.n_images}</b> images to the database (upload #${d.upload_id}).</p>
+  $('out1').innerHTML = `<p class="ok">Saved <b>${d.n_images}</b> images to the database (upload #${d.upload_id}).</p>
     <p class="muted">${Object.entries(d.per_class).map(([k, v]) => `${NAMES[k]}: ${v}`).join(' · ')}</p>`;
   $('dbImages').textContent = d.database.images; $('dbUnused').textContent = d.database.unused;
 };
@@ -61,7 +61,7 @@ $('uploadBtn').onclick = async () => {
 $('prepBtn').onclick = async () => {
   const [ok, d] = await call($('prepBtn'), '/api/preprocess', null, 'Preprocessing…');
   if (!ok) { $('out2').innerHTML = `<p class="error">${d.error}</p>`; return; }
-  $('out2').innerHTML = `<p class="ok">✔ Preprocessed <b>${d.n_images}</b> images → array of shape ${d.array_shape.join(' × ')}.</p>
+  $('out2').innerHTML = `<p class="ok">Preprocessed <b>${d.n_images}</b> images → array of shape ${d.array_shape.join(' × ')}.</p>
     <p class="muted">${Object.entries(d.per_class).map(([k, v]) => `${k}: ${v}`).join(' · ')}</p>
     <div class="thumbs">${d.examples.map(ex => `<figure><img src="${ex.img}"><figcaption>${ex.label}</figcaption></figure>`).join('')}</div>`;
 };
@@ -70,9 +70,9 @@ function showResult(d) {
   const rows = ['accuracy', 'precision', 'recall', 'f1_score', 'loss'].map(k =>
     `<tr><td>${k}</td><td>${k === 'loss' ? d.before[k].toFixed(4) : pct(d.before[k])}</td>
      <td><b>${k === 'loss' ? d.after[k].toFixed(4) : pct(d.after[k])}</b></td></tr>`).join('');
-  $('out3').innerHTML = `<p class="ok">✔ Retrained on ${d.n_training_images} images (${d.n_new_images} new) for ${d.epochs_run} epochs (early stopping).</p>
+  $('out3').innerHTML = `<p class="ok">Retrained on ${d.n_training_images} images (${d.n_new_images} new) for ${d.epochs_run} epochs (early stopping).</p>
     <table><tr><th>Test-set metric</th><th>Before</th><th>After</th></tr>${rows}</table>
-    <p class="${d.promoted ? 'ok' : 'error'}">${d.promoted ? `✔ New model <b>${d.version}</b> deployed: predictions now use it.`
+    <p class="${d.promoted ? 'ok' : 'error'}">${d.promoted ? `New model <b>${d.version}</b> deployed: predictions now use it.`
       : 'The new model was not more accurate, so the previous model was kept.'}</p>`;
 }
 
@@ -98,6 +98,7 @@ $('trainBtn').onclick = async () => {
   $('trainBtn').disabled = true; $('trainBtn').textContent = 'Retraining…';
   poll();
 };
-{% if s.retraining == 'running' %}$('trainBtn').disabled = true; poll();{% endif %}
+// if a retraining job is already running (e.g. the page was refreshed), resume showing its progress
+if ($('trainBtn').dataset.running === 'true') { $('trainBtn').disabled = true; poll(); }
 </script>
 {% endblock %}
