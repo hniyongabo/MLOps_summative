@@ -1,6 +1,5 @@
 ---
 title: Bean Leaf Doctor
-emoji: 🌱
 colorFrom: green
 colorTo: yellow
 sdk: docker
@@ -8,7 +7,7 @@ app_port: 7860
 pinned: false
 ---
 
-# 🌱 Bean Leaf Doctor: bean leaf disease detection, end-to-end ML pipeline
+# Bean Leaf Doctor: bean leaf disease detection, end-to-end ML pipeline
 
 Beans are a key source of protein in East Africa, and two leaf diseases, **angular leaf spot** and **bean rust**, can destroy much of a harvest. This project classifies a **photo of a bean leaf** into one of 3 classes: `angular_leaf_spot`, `bean_rust` or `healthy`. The model is served in a web app where you can:
 
@@ -18,9 +17,9 @@ Beans are a key source of protein in East Africa, and two leaf diseases, **angul
 
 | | |
 |---|---|
-| 🎥 **Video demo** | _paste your YouTube link here_ |
-| 🌐 **Live app** | _paste your Hugging Face Space URL here_ |
-| 📓 **Notebook** | [`notebook/bean_disease_classifier.ipynb`](notebook/bean_disease_classifier.ipynb) |
+| **Video demo** | _paste your YouTube link here_ |
+| **Live app** | _paste your Hugging Face Space URL here_ |
+| **Notebook** | [`notebook/bean_disease_classifier.ipynb`](notebook/bean_disease_classifier.ipynb) |
 
 ---
 
