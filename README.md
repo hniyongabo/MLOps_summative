@@ -51,11 +51,12 @@ Beans are a key source of protein in East Africa, and two leaf diseases, **angul
 
 **Evaluation metrics:** Accuracy, Loss, Precision, Recall, F1 score, ROC-AUC, plus the confusion matrix, classification report and per-class metrics.
 
-| Test set (128 images) | Accuracy | Loss | Precision | Recall | F1 |
-|---|---|---|---|---|---|
-| Vanilla CNN | _fill in from notebook section 7_ | | | | |
-| MobileNetV2 v1 | _fill in_ | | | | |
-| After retraining (v2) | _fill in from the Retrain page_ | | | | |
+| Test set (128 images) | Accuracy | Loss | Precision | Recall | F1 | ROC-AUC |
+|---|---|---|---|---|---|---|
+| Vanilla CNN (baseline) | 0.6953 | 0.6837 | 0.7535 | 0.6971 | 0.6709 | 0.9018 |
+| **MobileNetV2 v1 (deployed)** | **0.9062** | **0.3086** | **0.9077** | **0.9068** | **0.9049** | **0.9696** |
+
+Precision, recall and F1 are macro averages over the 3 classes. Transfer learning improves accuracy by 21 percentage points and almost halves the loss. Bean rust is the hardest class (F1 0.85), mostly confused with angular leaf spot. After a retraining run, the Retrain page and the dashboard show the before/after metrics of the new version.
 
 ## Project structure
 ```
@@ -74,6 +75,9 @@ Beans are a key source of protein in East Africa, and two leaf diseases, **angul
 ├── templates/, static/            # web UI
 ├── scripts/prepare_data.py        # download + organise the dataset locally (optional)
 ├── scripts/deploy_to_hf.py        # deploy to Hugging Face Spaces
+├── locustfile.py                  # flood-request simulation (Locust)
+├── docker-compose.yml             # N app containers behind nginx, for load testing
+├── loadtest/                      # nginx.conf + Locust CSV results
 └── Dockerfile, requirements.txt
 ```
 
@@ -105,6 +109,32 @@ pip install huggingface_hub
 python scripts/deploy_to_hf.py <your-hf-username>/bean-leaf-doctor
 ```
 You'll need a free Hugging Face account and an access token with *write* permission. The Space builds the Dockerfile; after about 10 minutes the app is live at `https://<your-hf-username>-bean-leaf-doctor.hf.space`.
+
+## 5. Flood request simulation (Locust)
+[`locustfile.py`](locustfile.py) simulates users who each send a leaf photo from `demo_samples/` to `/api/predict` (5 of every 6 requests) or check `/api/status`, waiting 1–3 s between requests. [`docker-compose.yml`](docker-compose.yml) runs the app in 1, 2 or 3 identical containers behind an nginx round-robin load balancer on port 8080.
+
+```bash
+pip install locust
+
+# 1 container
+docker compose up -d --build --scale app=1
+docker compose restart nginx
+locust -f locustfile.py --host http://localhost:8080 --headless -u 50 -r 5 -t 2m --csv loadtest/results/1_container
+
+# 2 and 3 containers: same commands with --scale app=2 / app=3 and --csv loadtest/results/2_containers / 3_containers
+docker compose down
+```
+Locust's web UI (`locust -f locustfile.py --host http://localhost:8080`, then http://localhost:8089) shows the same numbers live with charts. Each run writes `loadtest/results/<name>_stats.csv`.
+
+**Results:** 50 concurrent users, spawn rate 5/s, 2 minutes per run, `/api/predict` only.
+
+| Containers | Requests | Failures | Avg response (ms) | Median (ms) | 95th percentile (ms) | Requests/s |
+|---|---|---|---|---|---|---|
+| 1 | | | | | | |
+| 2 | | | | | | |
+| 3 | | | | | | |
+
+_Interpretation: fill in after the runs, e.g. how the median and 95th-percentile latency fall as containers are added and whether any requests failed with one container._
 
 ## How to use the app
 **Predict** (`/predict`): upload a leaf photo, e.g. `demo_samples/true_bean_rust_1.jpg`, and click **Predict**. You get the class, the confidence, the probability of each class and what the result means.
