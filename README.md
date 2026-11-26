@@ -17,8 +17,6 @@ Beans are a key source of protein in East Africa, and two leaf diseases, **angul
 
 | | |
 |---|---|
-| **Video demo** | _paste your YouTube link here_ |
-| **Live app** | _paste your Hugging Face Space URL here_ |
 | **Notebook** | [`notebook/bean_disease_classifier.ipynb`](notebook/bean_disease_classifier.ipynb) |
 
 ---
@@ -84,8 +82,7 @@ Precision, recall and F1 are macro averages over the 3 classes. Transfer learnin
 ## 1. Train the model (Google Colab)
 1. Open `notebook/bean_disease_classifier.ipynb` in [Google Colab](https://colab.research.google.com) (*File → Upload notebook*).
 2. *Runtime → Change runtime type → **T4 GPU***, then *Runtime → Run all* (about 15–25 min).
-3. The last cell downloads **`bean_project_outputs.zip`**. Unzip it into the root of this repository; it adds `data/`, `models/` and `demo_samples/`.
-4. *File → Download → Download .ipynb* and replace `notebook/bean_disease_classifier.ipynb` with this version, which includes the outputs.
+3. The last cell downloads **`bean_project_outputs.zip`** with the `data/`, `models/` and `demo_samples/` folders included in this repository.
 
 ## 2. Run the app locally
 Requires Python 3.10–3.12.
@@ -95,7 +92,6 @@ source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 python app.py                     # open http://localhost:7860
 ```
-If the model fails to load because of a version mismatch, pin TensorFlow in `requirements.txt` to the version printed in the notebook's first cell (e.g. `tensorflow==2.19.0`).
 
 ## 3. Run with Docker
 ```bash
@@ -125,16 +121,6 @@ locust -f locustfile.py --host http://localhost:8080 --headless -u 50 -r 5 -t 2m
 docker compose down
 ```
 Locust's web UI (`locust -f locustfile.py --host http://localhost:8080`, then http://localhost:8089) shows the same numbers live with charts. Each run writes `loadtest/results/<name>_stats.csv`.
-
-**Results:** 50 concurrent users, spawn rate 5/s, 2 minutes per run, `/api/predict` only.
-
-| Containers | Requests | Failures | Avg response (ms) | Median (ms) | 95th percentile (ms) | Requests/s |
-|---|---|---|---|---|---|---|
-| 1 | | | | | | |
-| 2 | | | | | | |
-| 3 | | | | | | |
-
-_Interpretation: fill in after the runs, e.g. how the median and 95th-percentile latency fall as containers are added and whether any requests failed with one container._
 
 ## How to use the app
 **Predict** (`/predict`): upload a leaf photo, e.g. `demo_samples/true_bean_rust_1.jpg`, and click **Predict**. You get the class, the confidence, the probability of each class and what the result means.
