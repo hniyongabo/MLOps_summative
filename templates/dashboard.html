@@ -23,22 +23,19 @@
 <section class="grid2">
   <div class="card">
     <img src="/static/insights/class_distribution.png?v={{ v }}" alt="class distribution">
-    <p><b>Balanced classes.</b> {{ data.total }} images in total. Each disease class has between {{ data.min_class }} and
-      {{ data.max_class }} training images, so the model is not biased towards one class and accuracy is a fair measure.
-      25% of the original training data is held back as the <i>retrain pool</i>: new data for the retraining demo.</p>
+    <p><b>Balanced classes.</b> {{ data.total }} images; {{ data.min_class }}–{{ data.max_class }} training images per class,
+      so accuracy is a fair measure. 25% is held back as the <i>retrain pool</i>.</p>
   </div>
   <div class="card">
     <img src="/static/insights/colour_analysis.png?v={{ v }}" alt="colour analysis">
-    <p><b>Colour tells part of the story.</b> <b>{{ data.greenest }}</b> leaves are the greenest on average and
-      <b>{{ data.least_green }}</b> the least green (mean share of green:
-      {% for k, val in data.mean_green.items() %}{{ k }} {{ val }}{{ ', ' if not loop.last }}{% endfor %}).
-      Disease turns leaf tissue brown/yellow, but the boxes overlap, so colour alone is not enough and the network also has to learn spot shapes and texture.</p>
+    <p><b>Colour helps, but not alone.</b> <b>{{ data.greenest }}</b> leaves are greenest, <b>{{ data.least_green }}</b> least
+      ({% for k, val in data.mean_green.items() %}{{ k }} {{ val }}{{ ', ' if not loop.last }}{% endfor %}).
+      The boxes overlap, so the model must also learn shape and texture.</p>
   </div>
   <div class="card wide">
     <img src="/static/insights/examples.png?v={{ v }}" alt="examples">
-    <p><b>What the classes look like.</b> Angular leaf spot gives brown, angular patches bounded by the leaf veins;
-      bean rust gives many small reddish-brown pustules; healthy leaves are uniformly green. Photos were taken in the field with
-      phones, so backgrounds, lighting and angles vary. That is why the model uses data augmentation and a pre-trained network.</p>
+    <p><b>The classes.</b> Angular leaf spot: brown patches bounded by veins. Bean rust: small reddish-brown pustules.
+      Healthy: evenly green. Field photos vary in background and lighting, hence augmentation and a pre-trained network.</p>
   </div>
   {% if mi.top_confusion %}
   <div class="card">
@@ -49,14 +46,14 @@
   {% if mi.hardest %}
   <div class="card">
     <img src="/static/insights/per_class_f1.png?v={{ v }}" alt="per class f1">
-    <p><b>Hardest class: {{ mi.hardest }}.</b> These two charts are recalculated after every retraining.</p>
+    <p><b>Hardest class: {{ mi.hardest }}.</b> Updated after every retraining.</p>
   </div>
   {% endif %}
   {% if mi.has_history %}
   <div class="card wide">
     <img src="/static/insights/training_curves.png?v={{ v }}" alt="training curves">
-    <p><b>Training process.</b> Phase 1 trains only the classifier on top of the frozen pre-trained MobileNetV2; after the dashed
-      line the top layers are fine-tuned with a tiny learning rate. Early stopping ends each phase when validation loss stops improving.</p>
+    <p><b>Training.</b> Phase 1 trains the classifier on a frozen MobileNetV2; after the dashed line the top layers are
+      fine-tuned. Early stopping ends each phase.</p>
   </div>
   {% endif %}
 </section>
