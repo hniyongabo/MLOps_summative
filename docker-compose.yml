@@ -3,7 +3,7 @@
 #   docker compose up -d --build --scale app=1     # then 2, then 3
 #   docker compose restart nginx                   # after changing the scale, so nginx sees every container
 #
-# Each container runs the same image as the Hugging Face deployment (see Dockerfile).
+# Each container runs the same image as the Docker deployment (see Dockerfile).
 services:
   app:
     build: .

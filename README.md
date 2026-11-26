@@ -1,12 +1,3 @@
----
-title: Bean Leaf Doctor
-colorFrom: green
-colorTo: yellow
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # Bean Leaf Doctor: bean leaf disease detection, end-to-end ML pipeline
 
 Beans are a key source of protein in East Africa, and two leaf diseases, **angular leaf spot** and **bean rust**, can destroy much of a harvest. This project classifies a **photo of a bean leaf** into one of 3 classes: `angular_leaf_spot`, `bean_rust` or `healthy`. The model is served in a web app where you can:
@@ -18,6 +9,7 @@ Beans are a key source of protein in East Africa, and two leaf diseases, **angul
 | | |
 |---|---|
 | **Notebook** | [`notebook/bean_disease_classifier.ipynb`](notebook/bean_disease_classifier.ipynb) |
+| **Video demo** | https://youtu.be/McgmPpzbGzs |
 
 ---
 
@@ -72,10 +64,9 @@ Precision, recall and F1 are macro averages over the 3 classes. Transfer learnin
 ├── demo_samples/                  # demo photos + retraining zip
 ├── templates/, static/            # web UI
 ├── scripts/prepare_data.py        # download + organise the dataset locally (optional)
-├── scripts/deploy_to_hf.py        # deploy to Hugging Face Spaces
 ├── locustfile.py                  # flood-request simulation (Locust)
 ├── docker-compose.yml             # N app containers behind nginx, for load testing
-├── loadtest/                      # nginx.conf + Locust CSV results
+├── loadtest/                      # nginx.conf (load balancer) + Locust results screenshot
 └── Dockerfile, requirements.txt
 ```
 
@@ -99,28 +90,23 @@ docker build -t bean-leaf-doctor .
 docker run -p 7860:7860 bean-leaf-doctor      # open http://localhost:7860
 ```
 
-## 4. Deploy for a public URL (Hugging Face Spaces, free)
-```bash
-pip install huggingface_hub
-python scripts/deploy_to_hf.py <your-hf-username>/bean-leaf-doctor
-```
-You'll need a free Hugging Face account and an access token with *write* permission. The Space builds the Dockerfile; after about 10 minutes the app is live at `https://<your-hf-username>-bean-leaf-doctor.hf.space`.
+## 4. Deployment
+The app is containerised with Docker (section 3) and runs on any Docker host. Hugging Face Docker Spaces now require a paid plan, so the app was deployed and demonstrated in a local Docker container (shown in the video).
 
 ## 5. Flood request simulation (Locust)
-[`locustfile.py`](locustfile.py) simulates users who each send a leaf photo from `demo_samples/` to `/api/predict` (5 of every 6 requests) or check `/api/status`, waiting 1–3 s between requests. [`docker-compose.yml`](docker-compose.yml) runs the app in 1, 2 or 3 identical containers behind an nginx round-robin load balancer on port 8080.
+[`locustfile.py`](locustfile.py) simulates users who each send a leaf photo from `demo_samples/` to `/api/predict` (5 of every 6 requests) or check `/api/status`, waiting 1–3 s between requests. [`docker-compose.yml`](docker-compose.yml) with [`loadtest/nginx.conf`](loadtest/nginx.conf) can run 1–3 app containers behind an nginx load balancer.
 
-```bash
-pip install locust
+**Results:** 50 simulated users against one Docker container (`http://localhost:7860`, CPU only), ramp-up 10 users/s, about 40 s:
 
-# 1 container
-docker compose up -d --build --scale app=1
-docker compose restart nginx
-locust -f locustfile.py --host http://localhost:8080 --headless -u 50 -r 5 -t 2m --csv loadtest/results/1_container
+| Endpoint | Requests | Failures | Median (ms) | Average (ms) | 95th percentile (ms) | 99th percentile (ms) | Max (ms) |
+|---|---|---|---|---|---|---|---|
+| POST `/api/predict` | 727 | 31 | 380 | 475 | 1,300 | 2,500 | 2,939 |
+| GET `/api/status` | 148 | 3 | 190 | 222 | 460 | 1,500 | 1,819 |
+| **Aggregated** | **875** | **34 (3.9%)** | **350** | **432** | **1,300** | **2,500** | **2,939** |
 
-# 2 and 3 containers: same commands with --scale app=2 / app=3 and --csv loadtest/results/2_containers / 3_containers
-docker compose down
-```
-Locust's web UI (`locust -f locustfile.py --host http://localhost:8080`, then http://localhost:8089) shows the same numbers live with charts. Each run writes `loadtest/results/<name>_stats.csv`.
+Throughput reached **22.2 requests/s**. Half of the predictions were answered in under 0.4 s; the slowest 5% took over 1.3 s because one container with one worker queues requests from 50 users. Running more containers behind nginx spreads this load.
+
+![Locust statistics](loadtest/locust_stats.png)
 
 ## How to use the app
 **Predict** (`/predict`): upload a leaf photo, e.g. `demo_samples/true_bean_rust_1.jpg`, and click **Predict**. You get the class, the confidence, the probability of each class and what the result means.

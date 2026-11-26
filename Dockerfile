@@ -1,7 +1,7 @@
-# Works on Hugging Face Spaces (Docker SDK) and on any machine with Docker.
+# Runs on any machine with Docker.
 FROM python:3.11-slim
 
-# Hugging Face Spaces runs containers as user 1000
+# run as a non-root user
 RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
